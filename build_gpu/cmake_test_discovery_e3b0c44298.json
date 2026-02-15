@@ -1,0 +1,32 @@
+{
+  "tests": 4,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "FEM3DTest",
+      "tests": 4,
+      "testsuite": [
+        {
+          "name": "MeshGenerationSmall",
+          "file": "\/home\/jliu17\/000_Projects\/04-Working\/FEM3D\/test\/test_cases.cpp",
+          "line": 77
+        },
+        {
+          "name": "SolverPipelineMedium",
+          "file": "\/home\/jliu17\/000_Projects\/04-Working\/FEM3D\/test\/test_cases.cpp",
+          "line": 87
+        },
+        {
+          "name": "SolverPipelineLarge",
+          "file": "\/home\/jliu17\/000_Projects\/04-Working\/FEM3D\/test\/test_cases.cpp",
+          "line": 100
+        },
+        {
+          "name": "Heterogeneous3D",
+          "file": "\/home\/jliu17\/000_Projects\/04-Working\/FEM3D\/test\/test_cases.cpp",
+          "line": 118
+        }
+      ]
+    }
+  ]
+}

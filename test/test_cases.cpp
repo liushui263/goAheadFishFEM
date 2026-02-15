@@ -114,3 +114,38 @@ TEST_F(FEM3DTest, SolverPipelineLarge) {
     // Once fixed, it should match mesh.edges.size()
     EXPECT_GT(E.size(), 0);
 }
+
+TEST_F(FEM3DTest, Heterogeneous3D) {
+    // 10x10x10 grid = 1000 cubes * 6 = 6000 elements
+    // Physical size 2.0 x 2.0 x 2.0
+    CreateBoxMesh(mesh, 10, 10, 10, 2.0, 2.0, 2.0);
+    mesh.generate_edges();
+    
+    // Initialize base materials (Identity)
+    SetupMaterial();
+
+    // Define a spherical inclusion at center
+    Eigen::Vector3d center(1.0, 1.0, 1.0);
+    double radius = 0.6;
+
+    for(size_t i=0; i<mesh.elements.size(); ++i) {
+        Eigen::Vector3d centroid = Eigen::Vector3d::Zero();
+        for(int n=0; n<4; ++n) {
+            centroid += mesh.nodes[mesh.elements[i][n]];
+        }
+        centroid /= 4.0;
+
+        if((centroid - center).norm() < radius) {
+            // Inclusion: high contrast (e.g. epsilon = 10 + 2i)
+            material.epsilon[i] = Eigen::Matrix3cd::Identity() * std::complex<double>(10.0, 2.0);
+        }
+    }
+
+    FEM_Solver fem(&mesh, &material, &sources);
+    fem.assemble();
+    
+    Vector E;
+    fem.solve(E);
+    
+    EXPECT_GT(E.size(), 0);
+}
