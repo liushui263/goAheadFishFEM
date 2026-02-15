@@ -149,3 +149,79 @@ TEST_F(FEM3DTest, Heterogeneous3D) {
     
     EXPECT_GT(E.size(), 0);
 }
+
+TEST_F(FEM3DTest, SolverPipelineMassive) {
+    // 60x60x60 grid = 216,000 cubes * 6 = 1,296,000 elements
+    // This generates ~1.5M+ edges, sufficient to show GPU advantage
+    std::cout << "Generating massive mesh (60x60x60)..." << std::endl;
+    CreateBoxMesh(mesh, 60, 60, 60, 6.0, 6.0, 6.0);
+    mesh.generate_edges();
+    SetupMaterial();
+
+    std::cout << "Mesh Stats - Elements: " << mesh.elements.size() 
+              << ", Edges (Unknowns): " << mesh.edges.size() << std::endl;
+
+    FEM_Solver fem(&mesh, &material, &sources);
+    fem.assemble();
+    
+    Vector E;
+    fem.solve(E);
+    
+    EXPECT_GT(E.size(), 0);
+}
+
+TEST_F(FEM3DTest, SolverPipelineHuge) {
+    // 40x40x40 grid = 64,000 cubes * 6 = 384,000 elements
+    // This generates ~200k+ edges, sufficient to show GPU advantage
+    std::cout << "Generating huge mesh (40x40x40)..." << std::endl;
+    CreateBoxMesh(mesh, 40, 40, 40, 4.0, 4.0, 4.0);
+    mesh.generate_edges();
+    SetupMaterial();
+
+    std::cout << "Mesh Stats - Elements: " << mesh.elements.size() 
+              << ", Edges (Unknowns): " << mesh.edges.size() << std::endl;
+
+    FEM_Solver fem(&mesh, &material, &sources);
+    fem.assemble();
+    
+    Vector E;
+    fem.solve(E);
+    
+    EXPECT_GT(E.size(), 0);
+}
+
+
+TEST_F(FEM3DTest, Heterogeneous3DMassive) {
+    // 10x10x10 grid = 1000 cubes * 6 = 6000 elements
+    // Physical size 2.0 x 2.0 x 2.0
+    CreateBoxMesh(mesh, 100, 100, 100, 20.0, 20.0, 20.0);
+    mesh.generate_edges();
+    
+    // Initialize base materials (Identity)
+    SetupMaterial();
+
+    // Define a spherical inclusion at center
+    Eigen::Vector3d center(1.0, 1.0, 1.0);
+    double radius = 2.6;
+
+    for(size_t i=0; i<mesh.elements.size(); ++i) {
+        Eigen::Vector3d centroid = Eigen::Vector3d::Zero();
+        for(int n=0; n<4; ++n) {
+            centroid += mesh.nodes[mesh.elements[i][n]];
+        }
+        centroid /= 4.0;
+
+        if((centroid - center).norm() < radius) {
+            // Inclusion: high contrast (e.g. epsilon = 10 + 2i)
+            material.epsilon[i] = Eigen::Matrix3cd::Identity() * std::complex<double>(10.0, 2.0);
+        }
+    }
+
+    FEM_Solver fem(&mesh, &material, &sources);
+    fem.assemble();
+    
+    Vector E;
+    fem.solve(E);
+    
+    EXPECT_GT(E.size(), 0);
+}

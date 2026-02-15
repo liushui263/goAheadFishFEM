@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <complex>
+#include <cmath>
 
 // Eigen includes
 #include <Eigen/Sparse>
@@ -152,24 +153,37 @@ void FEM_Solver::assemble() {
     // K_ij = integral( (curl Ni).mu^-1.(curl Nj) - w^2 Ni.eps.Nj )
     // F_i  = -j*w*Ni(r0).p + (curl Ni)(r0).m
     
-    // Since Mesh/Material classes are not fully defined, we initialize a dummy system
-    // to allow compilation and testing of the solver infrastructure.
-    int dummy_size = 100;
-    K_.resize(dummy_size, dummy_size);
-    F_.resize(dummy_size);
+    // Use actual mesh size if available, otherwise fallback to dummy for testing without mesh
+    size_t num_unknowns = (mesh_ && !mesh_->edges.empty()) ? mesh_->edges.size() : 100;
+    
+    K_.resize(num_unknowns, num_unknowns);
+    F_.resize(num_unknowns);
     
     std::vector<Eigen::Triplet<std::complex<double>>> triplets;
-    for(int i=0; i<dummy_size; ++i) {
-        // Simple 1D Laplacian-like stencil for testing
-        triplets.push_back({i, i, std::complex<double>(2.0, 0.0)});
-        if(i > 0) triplets.push_back({i, i-1, std::complex<double>(-1.0, 0.0)});
-        if(i < dummy_size-1) triplets.push_back({i, i+1, std::complex<double>(-1.0, 0.0)});
+    triplets.reserve(num_unknowns * 7); // Reserve for ~7-point stencil
+
+    // Construct a synthetic 3D-like sparse structure for benchmarking
+    // (Diagonal + Neighbors + Far Neighbors to simulate 3D bandwidth)
+    int bandwidth = static_cast<int>(std::pow(num_unknowns, 2.0/3.0)); // Approx N^2 stride for N^3 grid
+    if (bandwidth < 1) bandwidth = 1;
+
+    for(size_t i=0; i<num_unknowns; ++i) {
+        // Diagonal (ensure diagonal dominance for stability)
+        triplets.push_back({(int)i, (int)i, std::complex<double>(6.0, 0.5)});
+        
+        // Immediate neighbors (1D-like)
+        if(i > 0) triplets.push_back({(int)i, (int)i-1, std::complex<double>(-1.0, 0.0)});
+        if(i < num_unknowns-1) triplets.push_back({(int)i, (int)i+1, std::complex<double>(-1.0, 0.0)});
+        
+        // Far neighbors (Simulate 3D connectivity)
+        if(i >= (size_t)bandwidth) triplets.push_back({(int)i, (int)i-bandwidth, std::complex<double>(-1.0, 0.0)});
+        if(i + bandwidth < num_unknowns) triplets.push_back({(int)i, (int)i+bandwidth, std::complex<double>(-1.0, 0.0)});
         
         F_(i) = std::complex<double>(1.0, 0.0);
     }
     K_.setFromTriplets(triplets.begin(), triplets.end());
     
-    std::cout << "Assembly complete. System size: " << K_.rows() << std::endl;
+    std::cout << "Assembly complete. System size: " << K_.rows() << ", NNZ: " << K_.nonZeros() << std::endl;
 }
 
 void FEM_Solver::solve(Vector& E) {
