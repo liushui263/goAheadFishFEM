@@ -1,0 +1,347 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Adjoint-State Fréchet Derivatives and Gauss--Newton Hessian for Full-Wave Maxwell Inversion}
+\date{}
+\begin{document}
+\maketitle
+
+\section{Forward Problem}
+
+We consider the frequency-domain Maxwell equation:
+
+\begin{equation}
+\nabla \times (\mu^{-1} \nabla \times \bm{E})
+- i\omega \sigma \bm{E}
+- \omega^2 \varepsilon \bm{E}
+=
+\bm{f}.
+\end{equation}
+
+Define operator:
+
+\[
+\mathcal{A}(m)\bm{E} = \bm{f},
+\quad
+m = (\sigma,\varepsilon,\mu).
+\]
+
+---
+
+\section{Misfit Functional}
+
+\begin{equation}
+J(m)
+=
+\frac12
+\sum_r
+\|
+\bm{P}_r \bm{E} - \bm{d}_r
+\|^2.
+\end{equation}
+
+---
+
+\section{First-Order Linearization}
+
+Let
+
+\[
+m \to m + \delta m,
+\quad
+\bm{E} \to \bm{E} + \delta\bm{E}.
+\]
+
+Linearizing:
+
+\[
+\mathcal{A}(m)\delta\bm{E}
+=
+-
+D_m\mathcal{A}[\delta m]\bm{E}.
+\]
+
+Thus,
+
+\begin{equation}
+\delta\bm{E}
+=
+-
+\mathcal{A}^{-1}
+D_m\mathcal{A}[\delta m]\bm{E}.
+\end{equation}
+
+---
+
+\section{Jacobian Operator}
+
+Define the parameter-to-data map:
+
+\[
+\bm{F}(m) = \bm{P}\bm{E}(m).
+\]
+
+Linearization:
+
+\[
+D\bm{F}[\delta m]
+=
+\bm{P}\delta\bm{E}
+=
+-
+\bm{P}
+\mathcal{A}^{-1}
+D_m\mathcal{A}[\delta m]\bm{E}.
+\]
+
+Define Jacobian operator:
+
+\[
+\mathcal{J}
+=
+-
+\bm{P}
+\mathcal{A}^{-1}
+D_m\mathcal{A}.
+\]
+
+---
+
+\section{Gauss--Newton Hessian}
+
+The Gauss--Newton approximation neglects second-order derivatives of $\bm{E}$.
+
+\[
+H_{GN}
+=
+\mathcal{J}^*
+\mathcal{J}.
+\]
+
+Substitute expression:
+
+\[
+H_{GN}
+=
+(D_m\mathcal{A})^*
+(\mathcal{A}^{-1})^*
+\bm{P}^*
+\bm{P}
+\mathcal{A}^{-1}
+D_m\mathcal{A}.
+\]
+
+If residual is small:
+
+\[
+\bm{P}^*\bm{P}
+\approx
+\text{data weighting}.
+\]
+
+---
+
+\section{Explicit Kernel Representation}
+
+We insert the explicit Fréchet derivatives.
+
+---
+
+\subsection{Derivative w.r.t. $\sigma$}
+
+\[
+D_\sigma\mathcal{A}[\delta\sigma]\bm{E}
+=
+i\omega \delta\sigma \bm{E}.
+\]
+
+Thus Jacobian action:
+
+\[
+\delta d
+=
+-
+i\omega
+\bm{P}
+\mathcal{A}^{-1}
+(\delta\sigma \bm{E}).
+\]
+
+Hence Hessian kernel:
+
+\begin{equation}
+H_{\sigma\sigma}(x,x')
+=
+\omega^2
+\Re
+\left[
+\bm{E}(x)
+\cdot
+\bm{\Lambda}(x')
+\right],
+\end{equation}
+
+where $\bm{\Lambda}$ solves adjoint problem.
+
+---
+
+\subsection{Derivative w.r.t. $\varepsilon$}
+
+\[
+D_\varepsilon\mathcal{A}
+=
+\omega^2 \delta\varepsilon \bm{E}.
+\]
+
+Thus,
+
+\begin{equation}
+H_{\varepsilon\varepsilon}
+\sim
+\omega^4
+(\bm{E}\cdot\bm{\Lambda}).
+\end{equation}
+
+High-frequency amplification factor:
+
+\[
+H_{\varepsilon\varepsilon}
+\propto
+\omega^4.
+\]
+
+---
+
+\subsection{Derivative w.r.t. $\mu$}
+
+\[
+D_\mu\mathcal{A}
+=
+-
+\nabla \times
+(\mu^{-2}\delta\mu
+\nabla \times \bm{E}).
+\]
+
+After adjoint manipulation:
+
+\begin{equation}
+H_{\mu\mu}
+\sim
+\mu^{-4}
+(\nabla\times\bm{E})
+\cdot
+(\nabla\times\bm{\Lambda}).
+\end{equation}
+
+---
+
+\section{Block Hessian Structure}
+
+Let
+
+\[
+m =
+\begin{pmatrix}
+\sigma \\
+\varepsilon \\
+\mu
+\end{pmatrix}.
+\]
+
+Then Gauss--Newton Hessian has block form:
+
+\[
+H_{GN}
+=
+\begin{pmatrix}
+H_{\sigma\sigma} & H_{\sigma\varepsilon} & H_{\sigma\mu} \\
+H_{\varepsilon\sigma} & H_{\varepsilon\varepsilon} & H_{\varepsilon\mu} \\
+H_{\mu\sigma} & H_{\mu\varepsilon} & H_{\mu\mu}
+\end{pmatrix}.
+\]
+
+Cross terms arise from mixed Jacobians.
+
+Example:
+
+\[
+H_{\sigma\varepsilon}
+\sim
+\omega^3
+(\bm{E}\cdot\bm{\Lambda}).
+\]
+
+---
+
+\section{Multi-Frequency Joint Inversion}
+
+For frequencies $\{\omega_k\}_{k=1}^K$:
+
+\[
+J(m)
+=
+\sum_{k=1}^K
+J^{(k)}(m).
+\]
+
+Total Gauss--Newton Hessian:
+
+\[
+H_{GN}
+=
+\sum_{k=1}^K
+H_{GN}^{(k)}.
+\]
+
+Each block scales as:
+
+\[
+H_{\sigma\sigma}^{(k)} \sim \omega_k^2,
+\quad
+H_{\varepsilon\varepsilon}^{(k)} \sim \omega_k^4,
+\quad
+H_{\mu\mu}^{(k)} \sim O(1).
+\]
+
+Thus multi-frequency stacking improves conditioning:
+
+\[
+H_{total}
+=
+\sum_k
+\mathcal{J}_k^*
+\mathcal{J}_k.
+\]
+
+---
+
+\section{Compact Operator Form}
+
+\[
+H_{GN}
+=
+\sum_k
+(D_m\mathcal{A}_k)^*
+(\mathcal{A}_k^{-1})^*
+W_k
+\mathcal{A}_k^{-1}
+D_m\mathcal{A}_k.
+\]
+
+---
+
+\section{Key Observations}
+
+\begin{itemize}
+\item $\varepsilon$ Hessian scales as $\omega^4$.
+\item $\sigma$ Hessian scales as $\omega^2$.
+\item Multi-frequency inversion yields block-sum structure.
+\item Cross-talk between $\sigma$ and $\varepsilon$ grows with frequency.
+\item Helmholtz operator causes indefiniteness in Hessian.
+\end{itemize}
+
+\end{document}

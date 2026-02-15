@@ -1,0 +1,126 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=1in}
+
+\title{Review of ``Three-Dimensional Adaptive Higher-Order Finite Element Simulation for Geo-Electromagnetics --- A Marine CSEM Example''}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Objective}
+
+This paper presents a three-dimensional vector finite element framework 
+for frequency-domain geo-electromagnetic modeling, focusing on marine 
+Controlled-Source Electromagnetics (CSEM).
+
+The method combines:
+\begin{itemize}
+\item N\'ed\'elec edge elements,
+\item Higher-order polynomial approximation,
+\item Adaptive mesh refinement (AMR),
+\item Primary/secondary field decomposition.
+\end{itemize}
+
+\section*{2. Mathematical Model}
+
+Assuming time dependence $e^{-i\omega t}$, the secondary electric field 
+satisfies:
+
+\begin{align}
+\operatorname{curl}(\mu^{-1} \operatorname{curl} \mathbf{E}_s)
+- i\omega (\sigma - i\omega \varepsilon)\mathbf{E}_s
+&=
+\operatorname{curl}\left([\mu_p^{-1} - \mu^{-1}] 
+\operatorname{curl}\mathbf{E}_p \right) \\
+&\quad
+- i\omega \left([\sigma_p - \sigma] 
+- i\omega[\varepsilon_p - \varepsilon]\right)\mathbf{E}_p
+\end{align}
+
+Boundary condition:
+\[
+\mathbf{n} \times \mathbf{E}_s = 0
+\]
+
+\section*{3. Finite Element Discretization}
+
+The approximation reads:
+
+\[
+\tilde{\mathbf{E}}_s
+=
+\sum_{j=1}^n e_j \boldsymbol{\phi}_j
+\]
+
+The resulting linear system:
+
+\[
+A \mathbf{e} = \mathbf{f}
+\]
+
+with
+
+\begin{align}
+A_{ij}
+&=
+\int_\Omega
+(\mathrm{curl}\,\phi_i)
+\cdot
+\mu^{-1}
+(\mathrm{curl}\,\phi_j)
+\, d^3r
+\\
+&\quad
+-
+i\omega
+\int_\Omega
+\phi_i \cdot
+(\sigma - i\omega\varepsilon)\phi_j
+\, d^3r
+\end{align}
+
+\section*{4. Error Estimation}
+
+Magnetic field approximation:
+
+\[
+\tilde{\mathbf{H}}_s
+=
+(i\omega\mu)^{-1}
+\mathrm{curl}\tilde{\mathbf{E}}_s
+\]
+
+Error indicator:
+
+\[
+\eta_K
+=
+\int_K
+(\hat{\mathbf{H}}_s - \tilde{\mathbf{H}}_s)
+\cdot
+\mu
+(\hat{\mathbf{H}}_s - \tilde{\mathbf{H}}_s)
+\, d^3r
+\]
+
+\section*{5. Numerical Results}
+
+\begin{itemize}
+\item Higher-order elements significantly improve convergence.
+\item $p=2$ gives optimal accuracy-cost balance.
+\item Bathymetry induces strong 3-D effects.
+\item FEM outperforms finite volume near sources.
+\end{itemize}
+
+\section*{6. Conclusion}
+
+The paper demonstrates that adaptive higher-order N\'ed\'elec finite elements 
+are highly effective for 3-D marine CSEM simulations, particularly in 
+geometrically complex environments.
+
+\end{document}

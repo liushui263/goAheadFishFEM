@@ -1,0 +1,418 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{physics}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Adjoint-State Fréchet Derivatives for Full-Wave Frequency-Domain Maxwell Equations}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Forward Problem}
+
+We consider the frequency-domain Maxwell system under the 
+time convention $e^{-i\omega t}$.
+
+\subsection*{Maxwell Equations}
+
+\begin{align}
+\nabla \times \bm{E} &= i\omega \bm{B}, \\
+\nabla \times \bm{H} &= \bm{J}_s + \sigma \bm{E} - i\omega \varepsilon \bm{E}, \\
+\bm{B} &= \mu \bm{H}.
+\end{align}
+
+Eliminating $\bm{H}$ and $\bm{B}$ yields the second-order equation for $\bm{E}$:
+
+\begin{equation}
+\nabla \times (\mu^{-1} \nabla \times \bm{E})
+- i\omega \sigma \bm{E}
+- \omega^2 \varepsilon \bm{E}
+=
+\bm{f},
+\end{equation}
+
+where $\bm{f}$ denotes the source term (electric or magnetic dipole).
+
+Define the forward operator:
+
+\begin{equation}
+\mathcal{A}(m)\bm{E} = \bm{f},
+\end{equation}
+
+with model parameters
+
+\[
+m = (\sigma, \varepsilon, \mu).
+\]
+
+---
+
+\section{Misfit Functional}
+
+Assume data are electric field measurements:
+
+\begin{equation}
+J(m) = 
+\frac{1}{2}
+\sum_r 
+\left\|
+\bm{P}_r \bm{E} - \bm{d}_r
+\right\|^2.
+\end{equation}
+
+---
+
+\section{Fréchet Derivatives of the Forward Operator}
+
+Let
+
+\[
+\sigma \to \sigma + \delta\sigma, \quad
+\varepsilon \to \varepsilon + \delta\varepsilon, \quad
+\mu \to \mu + \delta\mu.
+\]
+
+Correspondingly,
+
+\[
+\bm{E} \to \bm{E} + \delta\bm{E}.
+\]
+
+Linearizing:
+
+\begin{equation}
+\mathcal{A}(m+\delta m)(\bm{E}+\delta\bm{E})
+=
+\bm{f}.
+\end{equation}
+
+Subtracting the original equation and neglecting higher-order terms:
+
+\begin{equation}
+\mathcal{A}(m)\delta\bm{E}
++
+D_m \mathcal{A}[\delta m]\bm{E}
+=
+0.
+\end{equation}
+
+---
+
+\subsection{Derivative w.r.t. Conductivity $\sigma$}
+
+Only the term $-i\omega \sigma \bm{E}$ depends on $\sigma$.
+
+\[
+\delta(-i\omega \sigma \bm{E})
+=
+-i\omega \delta\sigma \bm{E}.
+\]
+
+Therefore,
+
+\begin{equation}
+D_\sigma \mathcal{A}[\delta\sigma]\bm{E}
+=
+i\omega \delta\sigma \bm{E}.
+\end{equation}
+
+---
+
+\subsection{Derivative w.r.t. Permittivity $\varepsilon$}
+
+\[
+\delta(-\omega^2 \varepsilon \bm{E})
+=
+-\omega^2 \delta\varepsilon \bm{E}.
+\]
+
+Thus,
+
+\begin{equation}
+D_\varepsilon \mathcal{A}[\delta\varepsilon]\bm{E}
+=
+\omega^2 \delta\varepsilon \bm{E}.
+\end{equation}
+
+---
+
+\subsection{Derivative w.r.t. Permeability $\mu$}
+
+We consider
+
+\[
+\nabla \times (\mu^{-1} \nabla \times \bm{E}).
+\]
+
+Using
+
+\[
+\delta(\mu^{-1}) = -\mu^{-2} \delta\mu,
+\]
+
+we obtain
+
+\[
+\delta \left(
+\nabla \times (\mu^{-1} \nabla \times \bm{E})
+\right)
+=
+\nabla \times
+\left(
+-\mu^{-2} \delta\mu
+\nabla \times \bm{E}
+\right).
+\]
+
+Hence,
+
+\begin{equation}
+D_\mu \mathcal{A}[\delta\mu]\bm{E}
+=
+-
+\nabla \times
+\left(
+\mu^{-2} \delta\mu
+\nabla \times \bm{E}
+\right).
+\end{equation}
+
+---
+
+\section{Adjoint-State Formulation}
+
+Define the Lagrangian:
+
+\begin{equation}
+\mathcal{L}
+=
+J(m)
++
+\Re \left(
+\langle \bm{\Lambda},
+\mathcal{A}\bm{E}-\bm{f}
+\rangle
+\right).
+\end{equation}
+
+---
+
+\subsection{Adjoint Equation}
+
+Taking variation w.r.t. $\bm{E}$:
+
+\[
+\delta \mathcal{L}
+=
+\langle
+\bm{P}^*(\bm{P}\bm{E}-\bm{d}),
+\delta\bm{E}
+\rangle
++
+\langle
+\bm{\Lambda},
+\mathcal{A}\delta\bm{E}
+\rangle.
+\]
+
+Using adjoint operator $\mathcal{A}^\dagger$:
+
+\[
+\mathcal{A}^\dagger \bm{\Lambda}
+=
+\bm{P}^*(\bm{P}\bm{E}-\bm{d}).
+\]
+
+For Maxwell operator:
+
+\begin{equation}
+\nabla \times (\mu^{-1} \nabla \times \bm{\Lambda})
++ i\omega \sigma \bm{\Lambda}
+- \omega^2 \varepsilon \bm{\Lambda}
+=
+\bm{q}.
+\end{equation}
+
+---
+
+\section{Gradient Derivation}
+
+\[
+\delta J
+=
+-
+\Re
+\langle
+\bm{\Lambda},
+D_m \mathcal{A}[\delta m]\bm{E}
+\rangle.
+\]
+
+---
+
+\subsection{Gradient w.r.t. $\sigma$}
+
+\[
+\delta J
+=
+-
+\Re
+\int
+\bm{\Lambda}
+\cdot
+(i\omega \delta\sigma \bm{E})
+\, dV.
+\]
+
+\[
+=
+-
+\Re
+\int
+i\omega \delta\sigma
+(\bm{\Lambda}\cdot \bm{E})
+\, dV.
+\]
+
+Thus,
+
+\begin{equation}
+\boxed{
+\frac{\partial J}{\partial \sigma}
+=
+-
+\Re
+\left(
+i\omega \bm{\Lambda}\cdot \bm{E}
+\right)
+}
+\end{equation}
+
+---
+
+\subsection{Gradient w.r.t. $\varepsilon$}
+
+\[
+\delta J
+=
+-
+\Re
+\int
+\omega^2 \delta\varepsilon
+(\bm{\Lambda}\cdot \bm{E})
+\, dV.
+\]
+
+\begin{equation}
+\boxed{
+\frac{\partial J}{\partial \varepsilon}
+=
+-
+\Re
+\left(
+\omega^2 \bm{\Lambda}\cdot \bm{E}
+\right)
+}
+\end{equation}
+
+---
+
+\subsection{Gradient w.r.t. $\mu$}
+
+\[
+\delta J
+=
+-
+\Re
+\int
+\bm{\Lambda}
+\cdot
+\left(
+-
+\nabla \times
+(
+\mu^{-2}\delta\mu
+\nabla \times \bm{E}
+)
+\right)
+\, dV.
+\]
+
+Using integration by parts:
+
+\[
+\int
+\bm{\Lambda}
+\cdot
+\nabla \times \bm{X}
+=
+\int
+(\nabla \times \bm{\Lambda})
+\cdot
+\bm{X}.
+\]
+
+Therefore,
+
+\[
+\delta J
+=
+-
+\Re
+\int
+\mu^{-2}
+\delta\mu
+(\nabla \times \bm{E})
+\cdot
+(\nabla \times \bm{\Lambda})
+\, dV.
+\]
+
+\begin{equation}
+\boxed{
+\frac{\partial J}{\partial \mu}
+=
+\Re
+\left(
+\mu^{-2}
+(\nabla \times \bm{E})
+\cdot
+(\nabla \times \bm{\Lambda})
+\right)
+}
+\end{equation}
+
+---
+
+\section{Final Explicit Gradient Expressions}
+
+\begin{align}
+\nabla_\sigma J &=
+-
+\Re
+\left(
+i\omega
+\bm{\Lambda}\cdot \bm{E}
+\right), \\
+\nabla_\varepsilon J &=
+-
+\Re
+\left(
+\omega^2
+\bm{\Lambda}\cdot \bm{E}
+\right), \\
+\nabla_\mu J &=
+\Re
+\left(
+\mu^{-2}
+(\nabla \times \bm{E})
+\cdot
+(\nabla \times \bm{\Lambda})
+\right).
+\end{align}
+
+\end{document}

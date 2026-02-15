@@ -1,0 +1,362 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Full Newton Hessian for Frequency-Domain Maxwell Inversion}
+\date{}
+\begin{document}
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Frequency-Domain Maxwell Equations}
+
+Assume time convention $e^{-i\omega t}$.
+
+\begin{align}
+\nabla \times \bm{E} &= i\omega \bm{B}, \\
+\nabla \times \bm{H} &= \bm{J}_s + \sigma \bm{E} - i\omega \varepsilon \bm{E}, \\
+\bm{B} &= \mu \bm{H}.
+\end{align}
+
+Eliminate $\bm{H}$ and $\bm{B}$:
+
+\[
+\bm{H} = \mu^{-1}\bm{B}
+= \mu^{-1}(1/i\omega)\nabla\times\bm{E}.
+\]
+
+Substitute into Ampère’s law:
+
+\[
+\nabla\times(\mu^{-1}\nabla\times\bm{E})
+- i\omega\sigma\bm{E}
+- \omega^2\varepsilon\bm{E}
+=
+\bm{f}.
+\]
+
+Define forward operator:
+
+\[
+\mathcal{A}(m)\bm{E} = \bm{f},
+\quad
+m=(\sigma,\varepsilon,\mu).
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Misfit Functional}
+
+\[
+J(m)
+=
+\frac12
+\|\bm{P}\bm{E}(m)-\bm{d}\|^2.
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{First-Order Linearization}
+
+Let
+
+\[
+m \to m+\delta m,
+\quad
+\bm{E} \to \bm{E}+\delta\bm{E}.
+\]
+
+Linearize forward equation:
+
+\[
+\mathcal{A}(m+\delta m)(\bm{E}+\delta\bm{E})=\bm{f}.
+\]
+
+Expand:
+
+\[
+\mathcal{A}(m)\bm{E}
++
+\mathcal{A}(m)\delta\bm{E}
++
+D_m\mathcal{A}[\delta m]\bm{E}
+= \bm{f}.
+\]
+
+Subtract original equation:
+
+\[
+\mathcal{A}(m)\delta\bm{E}
+=
+-
+D_m\mathcal{A}[\delta m]\bm{E}.
+\]
+
+Thus,
+
+\[
+\delta\bm{E}
+=
+-
+\mathcal{A}^{-1}
+D_m\mathcal{A}[\delta m]\bm{E}.
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Fréchet Derivatives}
+
+\subsection{Derivative w.r.t. $\sigma$}
+
+\[
+D_\sigma\mathcal{A}[\delta\sigma]\bm{E}
+=
+i\omega\delta\sigma\bm{E}.
+\]
+
+\subsection{Derivative w.r.t. $\varepsilon$}
+
+\[
+D_\varepsilon\mathcal{A}[\delta\varepsilon]\bm{E}
+=
+\omega^2\delta\varepsilon\bm{E}.
+\]
+
+\subsection{Derivative w.r.t. $\mu$}
+
+Use
+
+\[
+\delta(\mu^{-1})=-\mu^{-2}\delta\mu.
+\]
+
+Then
+
+\[
+D_\mu\mathcal{A}[\delta\mu]\bm{E}
+=
+-
+\nabla\times
+(\mu^{-2}\delta\mu
+\nabla\times\bm{E}).
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Adjoint Equation}
+
+Define Lagrangian:
+
+\[
+\mathcal{L}
+=
+J(m)
++
+\Re
+\langle
+\bm{\Lambda},
+\mathcal{A}\bm{E}-\bm{f}
+\rangle.
+\]
+
+Variation w.r.t. $\bm{E}$:
+
+\[
+\delta\mathcal{L}
+=
+\langle
+\bm{P}^*(\bm{P}\bm{E}-\bm{d}),
+\delta\bm{E}
+\rangle
++
+\langle
+\bm{\Lambda},
+\mathcal{A}\delta\bm{E}
+\rangle.
+\]
+
+Thus adjoint equation:
+
+\[
+\mathcal{A}^\dagger\bm{\Lambda}
+=
+\bm{P}^*(\bm{P}\bm{E}-\bm{d}).
+\]
+
+Explicit form:
+
+\[
+\nabla\times(\mu^{-1}\nabla\times\bm{\Lambda})
++
+i\omega\sigma\bm{\Lambda}
+-
+\omega^2\varepsilon\bm{\Lambda}
+=
+\bm{q}.
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Gradient}
+
+\[
+\delta J
+=
+-
+\Re
+\langle
+\bm{\Lambda},
+D_m\mathcal{A}[\delta m]\bm{E}
+\rangle.
+\]
+
+\subsection{Conductivity}
+
+\[
+\nabla_\sigma J
+=
+-
+\Re
+(i\omega\bm{\Lambda}\cdot\bm{E}).
+\]
+
+\subsection{Permittivity}
+
+\[
+\nabla_\varepsilon J
+=
+-
+\Re
+(\omega^2\bm{\Lambda}\cdot\bm{E}).
+\]
+
+\subsection{Permeability}
+
+Using integration by parts:
+
+\[
+\nabla_\mu J
+=
+\Re
+\left(
+\mu^{-2}
+(\nabla\times\bm{E})
+\cdot
+(\nabla\times\bm{\Lambda})
+\right).
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Gauss--Newton Hessian}
+
+Jacobian:
+
+\[
+\mathcal{J}
+=
+-
+\bm{P}\mathcal{A}^{-1}D_m\mathcal{A}.
+\]
+
+Gauss--Newton approximation:
+
+\[
+H_{GN}
+=
+\mathcal{J}^*\mathcal{J}.
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Full Newton Hessian}
+
+Now include second-order field derivatives.
+
+Second variation:
+
+\[
+\delta^2\bm{E}
+=
+-
+\mathcal{A}^{-1}
+\left(
+D_m^2\mathcal{A}[\delta m_1,\delta m_2]\bm{E}
++
+D_m\mathcal{A}[\delta m_1]\delta\bm{E}_2
++
+D_m\mathcal{A}[\delta m_2]\delta\bm{E}_1
+\right).
+\]
+
+Full Hessian:
+
+\[
+H_{Newton}
+=
+H_{GN}
++
+H_{2nd}.
+\]
+
+Second-order term:
+
+\[
+H_{2nd}
+=
+\left\langle
+\bm{\Lambda},
+D_m^2\mathcal{A}[\cdot,\cdot]\bm{E}
+\right\rangle.
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Explicit Second Derivatives}
+
+\subsection{$\sigma$}
+
+Since linear:
+
+\[
+D_\sigma^2\mathcal{A}=0.
+\]
+
+\subsection{$\varepsilon$}
+
+\[
+D_\varepsilon^2\mathcal{A}=0.
+\]
+
+\subsection{$\mu$}
+
+\[
+\delta^2(\mu^{-1})
+=
+2\mu^{-3}(\delta\mu_1)(\delta\mu_2).
+\]
+
+Thus
+
+\[
+D_\mu^2\mathcal{A}
+=
+2\nabla\times
+(\mu^{-3}\delta\mu_1\delta\mu_2
+\nabla\times\bm{E}).
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Final Newton Hessian Expression}
+
+\[
+H_{Newton}
+=
+\mathcal{J}^*\mathcal{J}
++
+\Re
+\left\langle
+\bm{\Lambda},
+D_m^2\mathcal{A}\bm{E}
+\right\rangle.
+\]
+
+Only $\mu$ contributes to second-order term.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
