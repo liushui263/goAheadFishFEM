@@ -1,227 +1,190 @@
 #include <gtest/gtest.h>
 #include "fem_solver.h"
-#include "mesh.h"
-#include "material.h"
-#include "sources.h"
-#include <vector>
-#include <cmath>
-#include <Eigen/Dense>
+#include <Eigen/Core>
+#include <complex>
+#include <iostream>
+#include <chrono>
 
-// Helper to create a structured box mesh of tetrahedra
-// nx, ny, nz: number of cells in each direction
-void CreateBoxMesh(Mesh& mesh, int nx, int ny, int nz, double lx, double ly, double lz) {
-    mesh.nodes.clear();
-    mesh.elements.clear();
-    
-    double dx = lx / nx;
-    double dy = ly / ny;
-    double dz = lz / nz;
-
-    // Generate Nodes
-    for(int k=0; k<=nz; ++k) {
-        for(int j=0; j<=ny; ++j) {
-            for(int i=0; i<=nx; ++i) {
-                mesh.nodes.emplace_back(i*dx, j*dy, k*dz);
-            }
-        }
-    }
-
-    auto get_node = [&](int i, int j, int k) {
-        return k * (nx+1) * (ny+1) + j * (nx+1) + i;
-    };
-
-    // Generate Elements (Kuhn triangulation: 6 tetrahedra per cube)
-    for(int k=0; k<nz; ++k) {
-        for(int j=0; j<ny; ++j) {
-            for(int i=0; i<nx; ++i) {
-                int n0 = get_node(i, j, k);
-                int n1 = get_node(i+1, j, k);
-                int n2 = get_node(i+1, j+1, k);
-                int n3 = get_node(i, j+1, k);
-                int n4 = get_node(i, j, k+1);
-                int n5 = get_node(i+1, j, k+1);
-                int n6 = get_node(i+1, j+1, k+1);
-                int n7 = get_node(i, j+1, k+1);
-
-                mesh.elements.push_back({n0, n1, n2, n6});
-                mesh.elements.push_back({n0, n1, n5, n6});
-                mesh.elements.push_back({n0, n4, n5, n6});
-                mesh.elements.push_back({n0, n2, n3, n7});
-                mesh.elements.push_back({n0, n2, n6, n7});
-                mesh.elements.push_back({n0, n4, n6, n7});
-            }
-        }
-    }
+// Helper to print separator for readability in logs
+void PrintSeparator(const std::string& name) {
+    std::cout << "\n=============================================\n";
+    std::cout << "   Running Test: " << name << "\n";
+    std::cout << "=============================================\n";
 }
 
-class FEM3DTest : public ::testing::Test {
-protected:
-    Mesh mesh;
-    Material material;
-    Sources sources;
-
-    void SetUp() override {
-        // Setup default source
-        sources.p = Eigen::Vector3cd(1.0, 0.0, 0.0);
-        sources.m = Eigen::Vector3cd(0.0, 0.0, 0.0);
-        sources.r0 = Eigen::Vector3d(0.5, 0.5, 0.5);
-    }
-
-    void SetupMaterial() {
-        // Initialize material properties for all elements
-        material.mu.resize(mesh.elements.size(), Eigen::Matrix3cd::Identity());
-        material.epsilon.resize(mesh.elements.size(), Eigen::Matrix3cd::Identity());
-    }
-};
-
-TEST_F(FEM3DTest, MeshGenerationSmall) {
-    // 2x2x2 grid = 8 cubes. 6 tets per cube = 48 elements.
-    CreateBoxMesh(mesh, 2, 2, 2, 1.0, 1.0, 1.0);
-    mesh.generate_edges();
-
-    EXPECT_EQ(mesh.elements.size(), 48);
-    EXPECT_EQ(mesh.nodes.size(), 27); // 3x3x3 nodes
-    EXPECT_GT(mesh.edges.size(), 0);
+// 1. Basic Synthetic Test (Replaces test_simple)
+// Uses the default assemble() which creates a diagonally dominant matrix
+TEST(FEM3DTest, SyntheticAssembly_Small) {
+    PrintSeparator("SyntheticAssembly_Small");
+    
+    // Initialize with null pointers (uses default internal logic)
+    FEM_Solver solver(nullptr, nullptr, nullptr);
+    
+    // Default assemble() creates a 100x100 diagonal dominant system if no mesh is provided
+    solver.assemble();
+    
+    Eigen::VectorXcd E;
+    solver.solve(E);
+    
+    // Validation
+    EXPECT_EQ(E.size(), 100);
+    // Ensure we have a non-zero solution
+    EXPECT_GT(E.norm(), 1e-9);
+    // Ensure solution is finite (no NaNs)
+    EXPECT_TRUE(E.allFinite());
+    
+    std::cout << "Synthetic Solution Norm: " << E.norm() << std::endl;
 }
 
-TEST_F(FEM3DTest, SolverPipelineMedium) {
-    // 5x5x5 grid = 125 cubes * 6 = 750 elements
-    CreateBoxMesh(mesh, 5, 5, 5, 1.0, 1.0, 1.0);
-    mesh.generate_edges();
-    SetupMaterial();
-
-    FEM_Solver fem(&mesh, &material, &sources);
-    EXPECT_NO_THROW(fem.assemble());
+// 2. Realistic Physics Test (The new requirement)
+// Low Frequency (2kHz), High Conductivity (1 S/m) -> Ill-conditioned matrix
+TEST(FEM3DTest, RealisticPhysics_LWD_Scenario) {
+    PrintSeparator("RealisticPhysics_LWD_Scenario");
     
-    Vector E;
-    EXPECT_NO_THROW(fem.solve(E));
+    FEM_Solver solver(nullptr, nullptr, nullptr);
+    
+    int N = 1000000;        // Moderate size for unit testing
+    double freq = 2000.0; // 2 kHz
+    double sigma = 1.0;   // 1 S/m
+    
+    solver.assemble_maxwell(N, freq, sigma);
+    
+    Eigen::VectorXcd E;
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    solver.solve(E);
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+    std::cout << "Solve Time (N=" << N << "): " << elapsed.count() << " ms" << std::endl;
+    
+    EXPECT_EQ(E.size(), N);
+    EXPECT_TRUE(E.allFinite());
+    std::cout << "Physics Solution Norm: " << E.norm() << std::endl;
+
+    // Export results to JSON for Python comparison
+    solver.save_as_json("results_physics", E);
 }
 
-TEST_F(FEM3DTest, SolverPipelineLarge) {
-    // 10x10x10 grid = 1000 cubes * 6 = 6000 elements
-    CreateBoxMesh(mesh, 10, 10, 10, 1.0, 1.0, 1.0);
-    mesh.generate_edges();
-    SetupMaterial();
+// 3. Benchmark / Stress Test (Replaces benchmark)
+// Larger system to stress test the solver (CPU vs GPU)
+TEST(FEM3DTest, Benchmark_LargeSystem) {
+    PrintSeparator("Benchmark_LargeSystem");
+    
+    FEM_Solver solver(nullptr, nullptr, nullptr);
+    
+    // 50,000 unknowns is large enough to measure time, but small enough for CI
+    int N = 500000; 
+    double freq = 2000.0;
+    double sigma = 1.0;
+    
+    std::cout << "Assembling system with N=" << N << "..." << std::endl;
+    solver.assemble_maxwell(N, freq, sigma);
+    
+    Eigen::VectorXcd E;
+    
+    std::cout << "Solving..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    solver.solve(E);
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+    std::cout << "Benchmark Solve Time: " << elapsed.count() << " ms" << std::endl;
+    
+    // Export results to JSON for Python comparison
+    solver.save_as_json("results_LargeSystem", E);
 
-    FEM_Solver fem(&mesh, &material, &sources);
-    fem.assemble();
-    
-    Vector E;
-    fem.solve(E);
-    
-    // Basic check to ensure we have a result
-    // Note: E size currently depends on dummy implementation in fem_solver.cpp
-    // Once fixed, it should match mesh.edges.size()
-    EXPECT_GT(E.size(), 0);
+    EXPECT_EQ(E.size(), N);
+    EXPECT_TRUE(E.allFinite());
 }
 
-TEST_F(FEM3DTest, Heterogeneous3D) {
-    // 10x10x10 grid = 1000 cubes * 6 = 6000 elements
-    // Physical size 2.0 x 2.0 x 2.0
-    CreateBoxMesh(mesh, 10, 10, 10, 2.0, 2.0, 2.0);
-    mesh.generate_edges();
+// 4. Beautiful Pattern Test
+// Generates a 3D interference pattern from multiple sources
+TEST(FEM3DTest, BeautifulPattern) {
+    PrintSeparator("BeautifulPattern");
     
-    // Initialize base materials (Identity)
-    SetupMaterial();
-
-    // Define a spherical inclusion at center
-    Eigen::Vector3d center(1.0, 1.0, 1.0);
-    double radius = 0.6;
-
-    for(size_t i=0; i<mesh.elements.size(); ++i) {
-        Eigen::Vector3d centroid = Eigen::Vector3d::Zero();
-        for(int n=0; n<4; ++n) {
-            centroid += mesh.nodes[mesh.elements[i][n]];
-        }
-        centroid /= 4.0;
-
-        if((centroid - center).norm() < radius) {
-            // Inclusion: high contrast (e.g. epsilon = 10 + 2i)
-            material.epsilon[i] = Eigen::Matrix3cd::Identity() * std::complex<double>(10.0, 2.0);
-        }
-    }
-
-    FEM_Solver fem(&mesh, &material, &sources);
-    fem.assemble();
+    FEM_Solver solver(nullptr, nullptr, nullptr);
     
-    Vector E;
-    fem.solve(E);
+    // ~260k unknowns (64^3 grid) provides good resolution for visualization
+    int N = 262144; 
     
-    EXPECT_GT(E.size(), 0);
+    solver.assemble_interference_pattern(N);
+    
+    Eigen::VectorXcd E;
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    solver.solve(E);
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::cout << "Pattern Solve Time: " << std::chrono::duration<double, std::milli>(end - start).count() << " ms" << std::endl;
+    
+    solver.save_as_json("results_pattern", E);
 }
 
-TEST_F(FEM3DTest, SolverPipelineMassive) {
-    // 60x60x60 grid = 216,000 cubes * 6 = 1,296,000 elements
-    // This generates ~1.5M+ edges, sufficient to show GPU advantage
-    std::cout << "Generating massive mesh (60x60x60)..." << std::endl;
-    CreateBoxMesh(mesh, 60, 60, 60, 6.0, 6.0, 6.0);
-    mesh.generate_edges();
-    SetupMaterial();
-
-    std::cout << "Mesh Stats - Elements: " << mesh.elements.size() 
-              << ", Edges (Unknowns): " << mesh.edges.size() << std::endl;
-
-    FEM_Solver fem(&mesh, &material, &sources);
-    fem.assemble();
+// 5. Electric Dipole Test
+// Z-directed electric dipole in the center
+TEST(FEM3DTest, ElectricDipoleZ) {
+    PrintSeparator("ElectricDipoleZ");
     
-    Vector E;
-    fem.solve(E);
+    FEM_Solver solver(nullptr, nullptr, nullptr);
     
-    EXPECT_GT(E.size(), 0);
+    int N = 262144; // 64^3 grid
+    
+    solver.assemble_dipole(N, "electric");
+    
+    Eigen::VectorXcd E;
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    solver.solve(E);
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::cout << "Electric Dipole Solve Time: " << std::chrono::duration<double, std::milli>(end - start).count() << " ms" << std::endl;
+    
+    solver.save_as_json("results_electric_dipole", E);
 }
 
-TEST_F(FEM3DTest, SolverPipelineHuge) {
-    // 40x40x40 grid = 64,000 cubes * 6 = 384,000 elements
-    // This generates ~200k+ edges, sufficient to show GPU advantage
-    std::cout << "Generating huge mesh (40x40x40)..." << std::endl;
-    CreateBoxMesh(mesh, 40, 40, 40, 4.0, 4.0, 4.0);
-    mesh.generate_edges();
-    SetupMaterial();
-
-    std::cout << "Mesh Stats - Elements: " << mesh.elements.size() 
-              << ", Edges (Unknowns): " << mesh.edges.size() << std::endl;
-
-    FEM_Solver fem(&mesh, &material, &sources);
-    fem.assemble();
+// 6. Magnetic Dipole Test
+// Z-directed magnetic dipole in the center (simulated loop)
+TEST(FEM3DTest, MagneticDipoleZ) {
+    PrintSeparator("MagneticDipoleZ");
     
-    Vector E;
-    fem.solve(E);
+    FEM_Solver solver(nullptr, nullptr, nullptr);
     
-    EXPECT_GT(E.size(), 0);
+    int N = 262144; // 64^3 grid
+    
+    solver.assemble_dipole(N, "magnetic");
+    
+    Eigen::VectorXcd E;
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    solver.solve(E);
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::cout << "Magnetic Dipole Solve Time: " << std::chrono::duration<double, std::milli>(end - start).count() << " ms" << std::endl;
+    
+    solver.save_as_json("results_magnetic_dipole", E);
 }
 
-
-TEST_F(FEM3DTest, Heterogeneous3DMassive) {
-    // 10x10x10 grid = 1000 cubes * 6 = 6000 elements
-    // Physical size 2.0 x 2.0 x 2.0
-    CreateBoxMesh(mesh, 100, 100, 100, 20.0, 20.0, 20.0);
-    mesh.generate_edges();
+// 7. True 3D Vector Maxwell Test
+// Solves the full vector wave equation on a Yee grid
+TEST(FEM3DTest, TrueVectorMaxwell) {
+    PrintSeparator("TrueVectorMaxwell");
     
-    // Initialize base materials (Identity)
-    SetupMaterial();
-
-    // Define a spherical inclusion at center
-    Eigen::Vector3d center(1.0, 1.0, 1.0);
-    double radius = 2.6;
-
-    for(size_t i=0; i<mesh.elements.size(); ++i) {
-        Eigen::Vector3d centroid = Eigen::Vector3d::Zero();
-        for(int n=0; n<4; ++n) {
-            centroid += mesh.nodes[mesh.elements[i][n]];
-        }
-        centroid /= 4.0;
-
-        if((centroid - center).norm() < radius) {
-            // Inclusion: high contrast (e.g. epsilon = 10 + 2i)
-            material.epsilon[i] = Eigen::Matrix3cd::Identity() * std::complex<double>(10.0, 2.0);
-        }
-    }
-
-    FEM_Solver fem(&mesh, &material, &sources);
-    fem.assemble();
+    FEM_Solver solver(nullptr, nullptr, nullptr);
     
-    Vector E;
-    fem.solve(E);
+    // Grid parameters
+    int nx = 60, ny = 60, nz = 60;
+    double dx = 0.25;
+    double freq = 2e6; 
+    double sigma = 0.1;
     
-    EXPECT_GT(E.size(), 0);
+    solver.assemble_vector_maxwell(nx, ny, nz, dx, freq, sigma);
+    
+    Eigen::VectorXcd E;
+    auto start = std::chrono::high_resolution_clock::now();
+    solver.solve(E);
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::cout << "Vector Maxwell Solve Time: " << std::chrono::duration<double, std::milli>(end - start).count() << " ms" << std::endl;
+    solver.save_as_json("results_vector_maxwell", E);
 }

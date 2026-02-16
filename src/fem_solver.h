@@ -28,6 +28,11 @@ class FEM_Solver {
 public:
     FEM_Solver(Mesh* mesh, Material* material, Sources* sources);
     void assemble();
+    void assemble_maxwell(int N, double freq, double sigma);
+    void assemble_interference_pattern(int N);
+    void assemble_vector_maxwell(int nx, int ny, int nz, double dx, double freq, double sigma);
+    void assemble_dipole(int N, const std::string& type);
+    void save_as_json(const std::string& filename, const Vector& E);
     void solve(Vector& E);
 
 private:

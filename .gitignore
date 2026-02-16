@@ -2,6 +2,7 @@
 build/
 build_cpu/
 build_gpu/
+build_iter/
 cmake-build-*/
 
 # CMake files
@@ -24,3 +25,8 @@ compile_commands.json
 .bbl
 .blg
 .out
+
+# test
+result*json
+test/*png
+

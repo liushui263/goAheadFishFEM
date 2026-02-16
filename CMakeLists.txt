@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.18)
 project(FEM_Maxwell_Solver LANGUAGES CXX CUDA)
 
+# --- 添加 Iterative Solver 选项 ---
+option(USE_ITERATIVE_SOLVER "Use iterative solver (BiCGSTAB) instead of direct solver" OFF)
+
+if(USE_ITERATIVE_SOLVER)
+    message(STATUS "FEM Solver: Using Iterative Solver (BiCGSTAB)")
+else()
+    message(STATUS "FEM Solver: Using Direct Solver (SparseLU)")
+endif()
+
 # ----------------------------------
 # Default build type
 # ----------------------------------
@@ -18,7 +27,11 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     if(USE_GPU)
         set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/CEM/FEM3D/GPU_build" CACHE PATH "Install path" FORCE)
     else()
-        set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/CEM/FEM3D/CPU_build" CACHE PATH "Install path" FORCE)
+        if(USE_ITERATIVE_SOLVER)
+            set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/CEM/FEM3D/ITER_build" CACHE PATH "Install path" FORCE)
+        else()
+            set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/CEM/FEM3D/CPU_build" CACHE PATH "Install path" FORCE)
+        endif()
     endif()
 endif()
 
@@ -28,32 +41,24 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Include directories
-include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)
-
 # ----------------------------------
 # Library source files
 # ----------------------------------
-file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
+file(GLOB SRC_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*.cpp)
 list(FILTER SRC_FILES EXCLUDE REGEX "/main\\.cpp$")
 
 add_library(fem_lib ${SRC_FILES})
 target_include_directories(fem_lib PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)
+
+if(USE_ITERATIVE_SOLVER)
+    target_compile_definitions(fem_lib PUBLIC USE_ITERATIVE_SOLVER)
+endif()
 
 # ----------------------------------
 # Executables
 # ----------------------------------
 add_executable(main src/main.cpp)
 target_link_libraries(main PRIVATE fem_lib)
-
-add_executable(test_simple test/test_simple.cpp)
-target_link_libraries(test_simple PRIVATE fem_lib)
-
-add_executable(test_anisotropic test/test_anisotropic.cpp)
-target_link_libraries(test_anisotropic PRIVATE fem_lib)
-
-add_executable(benchmark test/benchmark.cpp)
-target_link_libraries(benchmark PRIVATE fem_lib)
 
 # ----------------------------------
 # GoogleTest (local, avoids permission errors)
@@ -68,25 +73,41 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
+# --- nlohmann_json (Reliable C++ JSON API) ---
+# 1. 优先查找本地安装的版本 (如 Conda 环境中)，避免下载
+find_package(nlohmann_json 3.11 QUIET)
+
+if(NOT nlohmann_json_FOUND)
+    message(STATUS "nlohmann_json not found locally, downloading via FetchContent...")
+    set(JSON_BuildTests OFF CACHE INTERNAL "") # 关键：关闭 JSON 库自身的测试以减少编译时间
+    FetchContent_Declare(
+        json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.11.2
+        GIT_SHALLOW TRUE  # 关键：只下载最新 commit，不下载整个历史
+    )
+    FetchContent_MakeAvailable(json)
+endif()
+
 enable_testing()
 include(GoogleTest)
 
 add_executable(unit_tests test/test_cases.cpp)
 target_link_libraries(unit_tests PRIVATE fem_lib GTest::gtest_main)
-gtest_discover_tests(unit_tests)
+gtest_discover_tests(unit_tests DISCOVERY_TIMEOUT 60)
 
 # ----------------------------------
 # Libraries
 # ----------------------------------
 find_package(Eigen3 REQUIRED)
 target_link_libraries(main PRIVATE Eigen3::Eigen)
+target_link_libraries(fem_lib PUBLIC nlohmann_json::nlohmann_json)
 
 # ----------------------------------
 # GPU / CPU build configuration
 # ----------------------------------
 if(USE_GPU)
     message(STATUS "Building with GPU/cuDSS support")
-    enable_language(CUDA)
     find_package(CUDAToolkit REQUIRED)
 
     find_path(CUDSS_INCLUDE_DIR cudss.h
@@ -110,18 +131,12 @@ if(USE_GPU)
     # ---------------------------
     # RPATH settings for GPU build
     # ---------------------------
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-
-    get_target_property(CUDA_LIB_DIR CUDA::cudart LOCATION)
-    get_filename_component(CUDA_LIB_DIR ${CUDA_LIB_DIR} DIRECTORY)
+    # We must set properties on targets because they were created before this block
     get_filename_component(CUDSS_LIB_DIR ${CUDSS_LIBRARY} DIRECTORY)
-
-    set(RPATH_LIST "${CUDA_LIB_DIR};${CUDSS_LIB_DIR}")
-    set_target_properties(fem_lib main test_simple test_anisotropic benchmark unit_tests
-        PROPERTIES
-            INSTALL_RPATH "${RPATH_LIST}"
-            BUILD_WITH_INSTALL_RPATH TRUE
+    set_target_properties(main unit_tests PROPERTIES
+        INSTALL_RPATH "${CUDSS_LIB_DIR}"
+        INSTALL_RPATH_USE_LINK_PATH TRUE
+        BUILD_WITH_INSTALL_RPATH TRUE
     )
 
 else()
@@ -156,7 +171,7 @@ install(TARGETS fem_lib
 )
 
 # Executables
-install(TARGETS main test_simple test_anisotropic benchmark unit_tests
+install(TARGETS main unit_tests
         RUNTIME DESTINATION bin
 )
 
